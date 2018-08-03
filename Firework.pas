@@ -1,20 +1,21 @@
 {$mode objfpc}
 {$COperators on}
-uses windows,graph,wincrt;
+uses windows,graph,wincrt,gvector;
 const   g=5;
 type    int = longint;
         TFirework = class
                 private
-                        x0,y0,x,y,a,t,v,cl:int;
+                        x0,y0,x,y,a,t,v,cl,lim:int;
                         IsMini:boolean;
                 public
                         constructor Create(xx,yy,aa,tt,vv,c:int; mini:boolean);
-                        procedure Hide();
                         procedure Show();
                         procedure Update();
                         function IsOutSide():boolean;
-//                        function CreateMini():TFirework;
+                        function IsHighest():boolean;
+                        function CreateMini():TFirework;
         end;
+        Tmyvector= specialize Tvector<TFirework>;
 function ran(l,r:int):int;
 begin
         exit(l+random(r-l+1));
@@ -27,18 +28,16 @@ constructor TFirework.Create(xx,yy,aa,tt,vv,c:int; mini:boolean);
 begin
         x:=xx; y:=yy;
         x0:=xx; y0:=yy; a:=aa; t:=tt; v:=vv; cl:=c; IsMini:=mini;
-end;
-procedure TFirework.Hide();
-begin
-        SetFillStyle(1,0);
-        SetColor(0);
-        FillEllipse(getmaxx-x,getmaxy-y,3,3);
+        lim:=round(v*sin(ToRadian(a))/g);
 end;
 procedure TFirework.Show();
 begin
         SetFillStyle(1,cl);
         SetColor(cl);
-        FillEllipse(getmaxx-x,getmaxy-y,3,3);
+        if IsMini then
+                PutPixel(getmaxx-x,getmaxy-y,cl)
+        else
+                FillEllipse(getmaxx-x,getmaxy-y,3,3);
 end;
 procedure TFirework.Update();
 var     tmp:real;
@@ -52,6 +51,14 @@ function TFirework.IsOutSide():boolean;
 begin
         exit((x<0) or (y<0) or (x>GetMaxX) or (y>GetMaxY));
 end;
+function TFirework.IsHighest():boolean;
+begin
+        exit(t>lim);
+end;
+function TFirework.CreateMini():TFirework;
+begin
+        result:=TFirework.Create(ran(x-100,x+100),ran(y-100,y+100),ran(a-10,a+10),ran(0,5),30,cl,true);
+end;
 procedure Init();
 var     gn,gm:smallint;
 begin
@@ -61,22 +68,48 @@ begin
         ClearViewPort();
         SetWindowText(GraphWindow,'Firework by leduykhongngu');
 end;
+var     tmp,mini:Tmyvector;
 procedure Meo();
-var     tmp:array[1..15] of TFirework;
+var
         i,j:int;
 begin
-        for j:=1 to 15 do
-                tmp[j]:=TFirework.create(ran(10,getmaxx-10),0,ran(70,120),0,ran(75,81),j,false);
+        tmp:=Tmyvector.create();
+        mini:=Tmyvector.create();
+        for j:=1 to 5 do
+                tmp.pushback(TFirework.create(ran(10,getmaxx-10),0,ran(70,120),0,ran(75,81),ran(10,14),false));
         repeat
-                for j:=1 to 15 do begin;
-                        tmp[j].hide();
-                        if (tmp[j].IsOutSide) then continue
+                for j:=tmp.size-1 downto 0 do begin;
+                        if (tmp[j].IsOutSide) then begin
+                                tmp[j]:=TFirework.create(ran(10,getmaxx-10),0,ran(70,120),0,ran(75,81),ran(10,14),false);
+                                continue;
+                        end
                         else begin
+                                if (tmp[j].x=-1) then continue;
                                 tmp[j].update();
-                                tmp[j].show();
+                                if (not tmp[j].IsHighest) then
+                                        tmp[j].show()
+                                else begin
+                                        for i:=1 to 200 do
+                                                mini.pushback(tmp[j].CreateMini());
+                                        tmp[j].x:=-1;
+
+                                end;
                         end;
                 end;
-                delay(30);
+                for j:=mini.size-1 downto 0 do begin
+                        if (Mini[j].IsOutSide()) then begin
+                                mini.erase(j);
+                                continue
+                        end
+                        else begin
+                                Mini[j].update();
+                                Mini[j].show();
+                        end;
+                end;
+                if (mini.size=0) then
+                delay(30)
+                else delay(20);
+                clearviewport();
         until keypressed;
 end;
 begin
@@ -85,3 +118,4 @@ begin
         Meo();
         CloseGraph();
 end.
+
